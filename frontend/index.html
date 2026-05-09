@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kids Edu-Vision</title>
+    <style>
+        body {
+            font-family: 'Comic Sans MS', 'Arial', sans-serif;
+            text-align: center;
+            background-color: #e0f7fa;
+            margin-top: 20px;
+        }
+        h1 { color: #ff5722; }
+        p { font-size: 18px; color: #333; }
+        .kamera-container {
+            margin: 20px auto;
+            border: 8px solid #ffeb3b;
+            border-radius: 20px;
+            width: 640px;
+            max-width: 90%;
+            overflow: hidden;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            background-color: #000;
+        }
+        img { width: 100%; height: auto; display: block; }
+        #voice-control {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        #hasil-deteksi {
+            font-size: 28px;
+            font-weight: bold;
+            color: #d32f2f;
+            margin-top: 15px;
+            height: 40px;
+        }
+    </style>
+</head>
+<body>
+    <h1>📸 Kids Edu-Vision!</h1>
+    <p>Halo! Tunjukkan benda biru ke kamera dan biarkan aku menebaknya!</p>
+    
+    <button id="voice-control" onclick="aktifkanSuara()">🔊 Nyalakan Suara Asisten</button>
+    
+    <div id="hasil-deteksi">...</div>
+
+    <div class="kamera-container">
+        <img src="{{ url_for('video_feed') }}" alt="Kamera">
+    </div>
+
+    <script>
+        let suaraAktif = false;
+        let bendaTerakhir = ""; 
+        const synth = window.speechSynthesis;
+
+        function aktifkanSuara() {
+            suaraAktif = true;
+            document.getElementById('voice-control').innerText = "✅ Suara Menyala (Mendeteksi...)";
+            document.getElementById('voice-control').style.backgroundColor = "#2196F3";
+            ucapkanKata("Sistem siap! Ayo bermain!");
+            
+            // Mulai bertanya ke Python setiap 1,5 detik
+            setInterval(tanyaPython, 1500); 
+        }
+
+        function ucapkanKata(teks) {
+            if (suaraAktif && synth) {
+                if (synth.speaking) synth.cancel();
+                const ucapan = new SpeechSynthesisUtterance(teks);
+                ucapan.lang = 'id-ID'; 
+                ucapan.pitch = 1.2;    
+                synth.speak(ucapan);
+            }
+        }
+
+        // Fungsi untuk mengambil data dari Python
+        function tanyaPython() {
+            fetch('/data_deteksi')
+                .then(response => response.json())
+                .then(data => {
+                    let objekSekarang = data.hasil;
+                    
+                    // Update tulisan di layar
+                    if(objekSekarang !== "") {
+                        document.getElementById('hasil-deteksi').innerText = "Wah, ada " + objekSekarang + "!";
+                    } else {
+                        document.getElementById('hasil-deteksi').innerText = "...";
+                    }
+
+                    // Jika benda yang dilihat berubah, ucapkan!
+                    if (objekSekarang !== "" && objekSekarang !== bendaTerakhir) {
+                        ucapkanKata("Aku melihat " + objekSekarang);
+                        bendaTerakhir = objekSekarang; // Simpan ke ingatan
+                    } 
+                    // Jika objek hilang dari kamera, reset ingatan
+                    else if (objekSekarang === "") {
+                        bendaTerakhir = "";
+                    }
+                });
+        }
+    </script>
+</body>
+</html>
